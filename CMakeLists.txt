@@ -9,8 +9,6 @@ enable_language(CXX)
 find_package(kodi REQUIRED)
 find_package(kodiplatform REQUIRED)
 
-include(ExternalProject)
-
 include_directories(${KODI_INCLUDE_DIR}
                     ${KODIPLATFORM_INCLUDE_DIRS}
                     ${PROJECT_SOURCE_DIR}/lib/psflib
