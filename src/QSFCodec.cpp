@@ -252,6 +252,7 @@ struct QSFContext
   int sample_rate;
   int64_t pos;
   int year;
+  std::string file;
   std::vector<uint8_t> qsound_state;
   CRingBuffer sample_buffer;
   std::string title;
@@ -343,7 +344,7 @@ static int psf_info_meta(void * context, const char * name, const char * value)
     qsf->album = value;
   else if (!strcasecmp(name, "year"))
     qsf->year = atoi(value);
-  else if (!strcasecmp(name, "length")) 
+  else if (!strcasecmp(name, "length"))
   {
     int temp = parse_time_crap(value);
     if (temp != BORK_TIME)
@@ -372,7 +373,7 @@ static int qsound_load(void * context, const uint8_t * exe, size_t exe_size,
     rom->upload_section( s, dataofs, exe, datasize );
 
     exe += datasize;
-    exe_size -= datasize; 
+    exe_size -= datasize;
   }
 
   return 0;
@@ -382,35 +383,30 @@ static __inline__ uint32_t Endian_Swap32(uint32_t x) {
         return((x<<24)|((x<<8)&0x00FF0000)|((x>>8)&0x0000FF00)|(x>>24));
 }
 
-void* Init(const char* strFile, unsigned int filecache, int* channels,
-           int* samplerate, int* bitspersample, int64_t* totaltime,
-           int* bitrate, AEDataFormat* format, const AEChannel** channelinfo)
+static bool Load(QSFContext* r)
 {
-  if (qsound_init())
-    return NULL;
-  QSFContext* result = new QSFContext;
-  result->pos = 0;
-  result->sample_buffer.Create(16384);
-  if (psf_load(strFile, &psf_file_system, 0x41, 0, 0, psf_info_meta, result, 0) <= 0)
+  if (psf_load(r->file.c_str(), &psf_file_system, 0x41,
+               0, 0, psf_info_meta, r, 0) <= 0)
   {
-    delete result;
-    return NULL;
+    delete r;
+    return false;
   }
 
-  result->qsound_state.resize(qsound_get_state_size());
-  void* pEmu = &result->qsound_state[0];
+  r->qsound_state.resize(qsound_get_state_size());
+  void* pEmu = &r->qsound_state[0];
   qsound_clear_state(pEmu);
-  result->rom.clear();
+  r->rom.clear();
 
-  if (psf_load(strFile, &psf_file_system, 0x41, qsound_load, &result->rom, 0, 0, 0) < 0)
+  if (psf_load(r->file.c_str(), &psf_file_system, 0x41,
+               qsound_load, &r->rom, 0, 0, 0) < 0)
   {
-    delete result;
-    return NULL;
+    delete r;
+    return false;
   }
 
-  if(result->rom.m_aKey.size() == 11)
+  if(r->rom.m_aKey.size() == 11)
   {
-    uint8_t * ptr = &result->rom.m_aKey[0];
+    uint8_t * ptr = &r->rom.m_aKey[0];
     uint32_t swap_key1 = Endian_Swap32( *( uint32_t * )( ptr +  0 ) );
     uint32_t swap_key2 = Endian_Swap32( *( uint32_t * )( ptr +  4 ) );
     uint32_t addr_key  = Endian_Swap32( *( uint16_t * )( ptr +  8 ) );
@@ -422,8 +418,22 @@ void* Init(const char* strFile, unsigned int filecache, int* channels,
     qsound_set_kabuki_key( pEmu, 0, 0, 0, 0 );
   }
 
-  qsound_set_z80_rom( pEmu, &result->rom.m_aZ80ROM[0], result->rom.m_aZ80ROM.size() );
-  qsound_set_sample_rom( pEmu, &result->rom.m_aSampleROM[0], result->rom.m_aSampleROM.size() );
+  qsound_set_z80_rom( pEmu, &r->rom.m_aZ80ROM[0], r->rom.m_aZ80ROM.size() );
+  qsound_set_sample_rom( pEmu, &r->rom.m_aSampleROM[0], r->rom.m_aSampleROM.size() );
+  r->pos = 0;
+}
+
+void* Init(const char* strFile, unsigned int filecache, int* channels,
+           int* samplerate, int* bitspersample, int64_t* totaltime,
+           int* bitrate, AEDataFormat* format, const AEChannel** channelinfo)
+{
+  if (qsound_init())
+    return NULL;
+  QSFContext* result = new QSFContext;
+  result->sample_buffer.Create(16384);
+  result->file = strFile;
+  if (!Load(result))
+    return NULL;
 
   *totaltime = result->length;
   static enum AEChannel map[3] = {
@@ -461,7 +471,22 @@ int ReadPCM(void* context, uint8_t* pBuffer, int size, int *actualsize)
 
 int64_t Seek(void* context, int64_t time)
 {
-  return 0;
+  QSFContext* qsf = (QSFContext*)context;
+
+  int64_t pos = time*44100*4/1000;
+  if (pos < qsf->pos)
+  {
+    Load(qsf);
+  }
+  while (qsf->pos < pos)
+  {
+    short temp[4096];
+    unsigned written=std::min((pos-qsf->pos)/4, (int64_t)2048);
+    qsound_execute(&qsf->qsound_state[0], 0x7FFFFFFF, temp, &written);
+    qsf->pos += written*4;
+  }
+
+  return time;
 }
 
 bool DeInit(void* context)
