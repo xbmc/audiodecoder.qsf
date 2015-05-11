@@ -421,6 +421,8 @@ static bool Load(QSFContext* r)
   qsound_set_z80_rom( pEmu, &r->rom.m_aZ80ROM[0], r->rom.m_aZ80ROM.size() );
   qsound_set_sample_rom( pEmu, &r->rom.m_aSampleROM[0], r->rom.m_aSampleROM.size() );
   r->pos = 0;
+
+  return true;
 }
 
 void* Init(const char* strFile, unsigned int filecache, int* channels,
