@@ -17,7 +17,7 @@
  *
  */
 
-#include "kodi/libXBMC_addon.h"
+#include "libXBMC_addon.h"
 #include "RingBuffer.h"
 
 #include <iostream>
@@ -28,7 +28,7 @@ extern "C" {
 #include "qsound.h"
 #include "psflib.h"
 
-#include "kodi/kodi_audiodec_dll.h"
+#include "kodi_audiodec_dll.h"
 
 ADDON::CHelper_libXBMC_addon *XBMC           = NULL;
 

@@ -10,7 +10,7 @@ find_package(kodi REQUIRED)
 find_package(kodiplatform REQUIRED)
 
 include_directories(${KODI_INCLUDE_DIR}
-                    ${KODIPLATFORM_INCLUDE_DIRS}
+                    ${kodiplatform_INCLUDE_DIRS}
                     ${PROJECT_SOURCE_DIR}/lib/psflib
                     ${PROJECT_SOURCE_DIR}/lib/Highly_Quixotic/Core)
 
