@@ -20,6 +20,8 @@ add_subdirectory(lib/Highly_Quixotic)
 set(QSF_SOURCES src/QSFCodec.cpp
                 src/RingBuffer.cpp)
 
+set(QSF_HEADERS src/RingBuffer.h)
+
 set(DEPLIBS ${p8-platform_LIBRARIES} highly_quixotic psflib)
 
 build_addon(audiodecoder.qsf QSF DEPLIBS)
