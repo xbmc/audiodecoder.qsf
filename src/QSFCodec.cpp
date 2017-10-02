@@ -17,87 +17,51 @@
  *
  */
 
-#include "libXBMC_addon.h"
+#include <kodi/addon-instance/AudioDecoder.h>
+#include <kodi/Filesystem.h>
 #include "RingBuffer.h"
 
 #include <iostream>
 
 extern "C" {
-#include <stdio.h>
-#include <stdint.h>
 #include "qsound.h"
 #include "psflib.h"
 
-#include "kodi_audiodec_dll.h"
-
-ADDON::CHelper_libXBMC_addon *XBMC           = NULL;
-
-ADDON_STATUS ADDON_Create(void* hdl, void* props)
-{
-  if (!XBMC)
-    XBMC = new ADDON::CHelper_libXBMC_addon;
-
-  if (!XBMC->RegisterMe(hdl))
-  {
-    delete XBMC, XBMC=NULL;
-    return ADDON_STATUS_PERMANENT_FAILURE;
-  }
-
-  return ADDON_STATUS_OK;
-}
-
-//-- Destroy ------------------------------------------------------------------
-// Do everything before unload of this add-on
-// !!! Add-on master function !!!
-//-----------------------------------------------------------------------------
-void ADDON_Destroy()
-{
-  XBMC=NULL;
-}
-
-//-- GetStatus ---------------------------------------------------------------
-// Returns the current Status of this visualisation
-// !!! Add-on master function !!!
-//-----------------------------------------------------------------------------
-ADDON_STATUS ADDON_GetStatus()
-{
-  return ADDON_STATUS_OK;
-}
-
-//-- SetSetting ---------------------------------------------------------------
-// Set a specific Setting value (called from XBMC)
-// !!! Add-on master function !!!
-//-----------------------------------------------------------------------------
-ADDON_STATUS ADDON_SetSetting(const char *strSetting, const void* value)
-{
-  return ADDON_STATUS_OK;
-}
-
 static void * psf_file_fopen( const char * uri )
 {
-  return  XBMC->OpenFile(uri, 0);
+  kodi::vfs::CFile* file = new kodi::vfs::CFile;
+  if (!file->OpenFile(uri, 0))
+  {
+    delete file;
+    return nullptr;
+  }
+
+  return file;
 }
 
 static size_t psf_file_fread( void * buffer, size_t size, size_t count, void * handle )
 {
-  return XBMC->ReadFile(handle, buffer, size*count);
+  kodi::vfs::CFile* file = static_cast<kodi::vfs::CFile*>(handle);
+  return file->Read(buffer, size*count);
 }
 
 static int psf_file_fseek( void * handle, int64_t offset, int whence )
 {
-  return XBMC->SeekFile(handle, offset, whence) > -1?0:-1;
+  kodi::vfs::CFile* file = static_cast<kodi::vfs::CFile*>(handle);
+  return file->Seek(offset, whence) > -1 ? 0 : -1;
 }
 
 static int psf_file_fclose( void * handle )
 {
-  XBMC->CloseFile(handle);
+  delete static_cast<kodi::vfs::CFile*>(handle);
 
   return 0;
 }
 
 static long psf_file_ftell( void * handle )
 {
-  return XBMC->GetFilePosition(handle);
+  kodi::vfs::CFile* file = static_cast<kodi::vfs::CFile*>(handle);
+  return file->GetPosition();
 }
 
 const psf_file_callbacks psf_file_system =
@@ -109,6 +73,8 @@ const psf_file_callbacks psf_file_system =
   psf_file_fclose,
   psf_file_ftell
 };
+
+}
 
 class qsound_rom
 {
@@ -382,97 +348,118 @@ static bool Load(QSFContext* r)
   return true;
 }
 
-void* Init(const char* strFile, unsigned int filecache, int* channels,
-           int* samplerate, int* bitspersample, int64_t* totaltime,
-           int* bitrate, AEDataFormat* format, const AEChannel** channelinfo)
+class CQSFCodec : public kodi::addon::CInstanceAudioDecoder,
+                  public kodi::addon::CAddonBase
 {
-  if (qsound_init())
-    return NULL;
-  QSFContext* result = new QSFContext;
-  result->sample_buffer.Create(16384);
-  result->file = strFile;
-  if (!Load(result))
-    return NULL;
+public:
+  CQSFCodec(KODI_HANDLE instance) :
+    CInstanceAudioDecoder(instance) {}
 
-  *totaltime = result->length;
-  static enum AEChannel map[3] = {
-    AE_CH_FL, AE_CH_FR, AE_CH_NULL
-  };
-  *format = AE_FMT_S16NE;
-  *channelinfo = map;
-  *channels = 2;
-  *bitspersample = 16;
-  *bitrate = 0.0;
-  *samplerate = 44100;
-
-  return result;
-}
-
-int ReadPCM(void* context, uint8_t* pBuffer, int size, int *actualsize)
-{
-  QSFContext* qsf = (QSFContext*)context;
-  if (qsf->pos >= qsf->length*44100*4/1000)
-    return 1;
-
-  if (qsf->sample_buffer.getMaxReadSize() == 0) {
-    short temp[4096];
-    unsigned written=2048;
-    qsound_execute(&qsf->qsound_state[0], 0x7FFFFFFF, temp, &written);
-    qsf->sample_buffer.WriteData((const char*)temp, written*4);
-  }
-
-  int tocopy = std::min(size, (int)qsf->sample_buffer.getMaxReadSize());
-  qsf->sample_buffer.ReadData((char*)pBuffer, tocopy);
-  qsf->pos += tocopy;
-  *actualsize = tocopy;
-  return 0;
-}
-
-int64_t Seek(void* context, int64_t time)
-{
-  QSFContext* qsf = (QSFContext*)context;
-
-  int64_t pos = time*44100*4/1000;
-  if (pos < qsf->pos)
+  virtual ~CQSFCodec()
   {
-    Load(qsf);
   }
-  while (qsf->pos < pos)
+
+  virtual bool Init(const std::string& filename, unsigned int filecache,
+                    int& channels, int& samplerate,
+                    int& bitspersample, int64_t& totaltime,
+                    int& bitrate, AEDataFormat& format,
+                    std::vector<AEChannel>& channellist) override
   {
-    short temp[4096];
-    unsigned written=std::min((pos-qsf->pos)/4, (int64_t)2048);
-    qsound_execute(&qsf->qsound_state[0], 0x7FFFFFFF, temp, &written);
-    qsf->pos += written*4;
+    if (qsound_init())
+      return false;
+
+    ctx.sample_buffer.Create(16384);
+    ctx.file = filename;
+    if (!Load(&ctx))
+      return false;
+
+    totaltime = ctx.length;
+    static enum AEChannel map[3] = {
+      AE_CH_FL, AE_CH_FR, AE_CH_NULL
+    };
+    format = AE_FMT_S16NE;
+    channellist = { AE_CH_FL, AE_CH_FR };
+    channels = 2;
+    bitspersample = 16;
+    bitrate = 0.0;
+    samplerate = 44100;
+
+    return true;
   }
 
-  return time;
-}
-
-bool DeInit(void* context)
-{
-  delete (QSFContext*)context;
-  return true;
-}
-
-bool ReadTag(const char* strFile, char* title, char* artist, int* length)
-{
-  QSFContext* result = new QSFContext;
-  if (psf_load(strFile, &psf_file_system, 0x41, 0, 0, psf_info_meta, result, 0) <= 0)
+  virtual int ReadPCM(uint8_t* buffer, int size, int& actualsize) override
   {
-    delete result;
-    return false;
-  }
-  const char* rslash = strrchr(strFile,'/');
-  if (!rslash)
-    rslash = strrchr(strFile,'\\');
-  strcpy(title,rslash+1);
-  strcpy(artist,result->album.c_str());
-  *length = result->length/1000;
-  return true;
-}
+    if (ctx.pos >= ctx.length*44100*4/1000)
+      return 1;
 
-int TrackCount(const char* strFile)
+    if (ctx.sample_buffer.getMaxReadSize() == 0) {
+      short temp[4096];
+      unsigned written=2048;
+      qsound_execute(&ctx.qsound_state[0], 0x7FFFFFFF, temp, &written);
+      ctx.sample_buffer.WriteData((const char*)temp, written*4);
+    }
+
+    int tocopy = std::min(size, (int)ctx.sample_buffer.getMaxReadSize());
+    ctx.sample_buffer.ReadData((char*)buffer, tocopy);
+    ctx.pos += tocopy;
+    actualsize = tocopy;
+    return 0;
+  }
+
+  virtual int64_t Seek(int64_t time) override
+  {
+    int64_t pos = time*44100*4/1000;
+    if (pos < ctx.pos)
+    {
+      Load(&ctx);
+    }
+    while (ctx.pos < pos)
+    {
+      short temp[4096];
+      unsigned written=std::min((pos-ctx.pos)/4, (int64_t)2048);
+      qsound_execute(&ctx.qsound_state[0], 0x7FFFFFFF, temp, &written);
+      ctx.pos += written*4;
+    }
+
+    return time;
+  }
+
+  virtual bool ReadTag(const std::string& file, std::string& title,
+                       std::string& artist, int& length) override
+  {
+    QSFContext result;
+    if (psf_load(file.c_str(), &psf_file_system, 0x41, 0, 0,
+                 psf_info_meta, &result, 0) <= 0)
+    {
+      return false;
+    }
+    const char* rslash = strrchr(file.c_str(),'/');
+    if (!rslash)
+      rslash = strrchr(file.c_str(),'\\');
+    title = rslash+1;
+    artist = result.album;
+    length = result.length/1000;
+    return true;
+  }
+
+private:
+  QSFContext ctx;
+};
+
+
+class ATTRIBUTE_HIDDEN CMyAddon : public kodi::addon::CAddonBase
 {
-  return 1;
-}
-}
+public:
+  CMyAddon() { }
+  virtual ADDON_STATUS CreateInstance(int instanceType, std::string instanceID, KODI_HANDLE instance, KODI_HANDLE& addonInstance) override
+  {
+    addonInstance = new CQSFCodec(instance);
+    return ADDON_STATUS_OK;
+  }
+  virtual ~CMyAddon()
+  {
+  }
+};
+
+
+ADDONCREATOR(CMyAddon);

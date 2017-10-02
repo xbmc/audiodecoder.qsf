@@ -9,7 +9,7 @@ enable_language(CXX)
 find_package(Kodi REQUIRED)
 find_package(p8-platform REQUIRED)
 
-include_directories(${KODI_INCLUDE_DIR}
+include_directories(${KODI_INCLUDE_DIR}/..
                     ${p8-platform_INCLUDE_DIRS}
                     ${PROJECT_SOURCE_DIR}/lib/psflib
                     ${PROJECT_SOURCE_DIR}/lib/Highly_Quixotic/Core)
