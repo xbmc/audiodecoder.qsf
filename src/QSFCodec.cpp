@@ -21,6 +21,7 @@
 #include <kodi/Filesystem.h>
 #include "RingBuffer.h"
 
+#include <algorithm>
 #include <iostream>
 
 extern "C" {

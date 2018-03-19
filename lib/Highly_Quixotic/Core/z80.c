@@ -149,7 +149,7 @@ static uint8 SZHV_dec[0x100];
 //
 // Init: mainly just initialize the flag lookup tables
 //
-sint32 z80_init(void) {
+sint32 EMU_CALL z80_init(void) {
   uint32 i;
   for (i = 0; i < 256; i++) {
     uint32 nbits = 0;

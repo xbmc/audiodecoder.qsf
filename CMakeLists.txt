@@ -26,4 +26,8 @@ set(DEPLIBS ${p8-platform_LIBRARIES} highly_quixotic psflib)
 
 build_addon(audiodecoder.qsf QSF DEPLIBS)
 
+if(CORE_SYSTEM_NAME MATCHES windows)
+  target_compile_definitions(audiodecoder.qsf PRIVATE -Dstrcasecmp=_stricmp -D__inline__=__inline)
+endif()
+
 include(CPack)
