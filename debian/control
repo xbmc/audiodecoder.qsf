@@ -1,0 +1,21 @@
+Source: kodi-audiodecoder-qsf
+Priority: extra
+Maintainer: Arne Morten Kvarving <cptspiff@gmail.com>
+Build-Depends: debhelper (>= 8.0.0), cmake, kodi-addon-dev,
+               libkodiplatform-dev (>= 17.1.0), zlib1g-dev
+Standards-Version: 3.9.6
+Section: libs
+
+Package: kodi-audiodecoder-qsf
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: QSF audio decoder for Kodi
+  QSF audio decoder for Kodi
+
+Package: kodi-audiodecoder-qsf-dbg
+Section: debug
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: debug symbols for QSF audio decoder for Kodi
+  debug symbols for QSF audio decoder for Kodi
