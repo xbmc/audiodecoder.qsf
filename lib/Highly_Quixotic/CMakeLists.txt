@@ -6,7 +6,7 @@ set(SOURCES Core/kabuki.c
             Core/qsound.c
             Core/z80.c)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 add_definitions(-DEMU_COMPILE -DEMU_LITTLE_ENDIAN)
 
 add_library(highly_quixotic STATIC ${SOURCES})
+set_property(TARGET highly_quixotic PROPERTY POSITION_INDEPENDENT_CODE ON)
