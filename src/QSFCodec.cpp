@@ -349,8 +349,7 @@ static bool Load(QSFContext* r)
   return true;
 }
 
-class CQSFCodec : public kodi::addon::CInstanceAudioDecoder,
-                  public kodi::addon::CAddonBase
+class ATTRIBUTE_HIDDEN CQSFCodec : public kodi::addon::CInstanceAudioDecoder
 {
 public:
   CQSFCodec(KODI_HANDLE instance) :
