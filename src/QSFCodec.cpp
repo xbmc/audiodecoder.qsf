@@ -310,7 +310,7 @@ static __inline__ uint32_t Endian_Swap32(uint32_t x) {
 static bool Load(QSFContext* r)
 {
   if (psf_load(r->file.c_str(), &psf_file_system, 0x41,
-               0, 0, psf_info_meta, r, 0) <= 0)
+               nullptr, nullptr, psf_info_meta, r, 0, nullptr, nullptr) <= 0)
   {
     return false;
   }
@@ -321,7 +321,7 @@ static bool Load(QSFContext* r)
   r->rom.clear();
 
   if (psf_load(r->file.c_str(), &psf_file_system, 0x41,
-               qsound_load, &r->rom, 0, 0, 0) < 0)
+               qsound_load, &r->rom, nullptr, nullptr, 0, nullptr, nullptr) < 0)
   {
     return false;
   }
@@ -424,8 +424,8 @@ public:
                std::string& artist, int& length) override
   {
     QSFContext result;
-    if (psf_load(file.c_str(), &psf_file_system, 0x41, 0, 0,
-                 psf_info_meta, &result, 0) <= 0)
+    if (psf_load(file.c_str(), &psf_file_system, 0x41, nullptr, nullptr,
+                 psf_info_meta, &result, 0, nullptr, nullptr) <= 0)
     {
       return false;
     }
