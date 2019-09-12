@@ -334,7 +334,7 @@ static bool Load(QSFContext* r)
     uint32_t swap_key1 = Endian_Swap32( *( uint32_t * )( ptr +  0 ) );
     uint32_t swap_key2 = Endian_Swap32( *( uint32_t * )( ptr +  4 ) );
     uint32_t addr_key  = Endian_Swap32( *( uint16_t * )( ptr +  8 ) );
-    uint8_t  xor_key   =                                      *( ptr + 10 );
+    uint8_t  xor_key   =                              *( ptr + 10 );
     qsound_set_kabuki_key( pEmu, swap_key1, swap_key2, addr_key, xor_key );
   }
   else
@@ -355,15 +355,13 @@ public:
   CQSFCodec(KODI_HANDLE instance) :
     CInstanceAudioDecoder(instance) {}
 
-  virtual ~CQSFCodec()
-  {
-  }
+  virtual ~CQSFCodec() = default;
 
-  virtual bool Init(const std::string& filename, unsigned int filecache,
-                    int& channels, int& samplerate,
-                    int& bitspersample, int64_t& totaltime,
-                    int& bitrate, AEDataFormat& format,
-                    std::vector<AEChannel>& channellist) override
+  bool Init(const std::string& filename, unsigned int filecache,
+            int& channels, int& samplerate,
+            int& bitspersample, int64_t& totaltime,
+            int& bitrate, AEDataFormat& format,
+            std::vector<AEChannel>& channellist) override
   {
     if (qsound_init())
       return false;
@@ -387,7 +385,7 @@ public:
     return true;
   }
 
-  virtual int ReadPCM(uint8_t* buffer, int size, int& actualsize) override
+  int ReadPCM(uint8_t* buffer, int size, int& actualsize) override
   {
     if (ctx.pos >= ctx.length*44100*4/1000)
       return 1;
@@ -406,7 +404,7 @@ public:
     return 0;
   }
 
-  virtual int64_t Seek(int64_t time) override
+  int64_t Seek(int64_t time) override
   {
     int64_t pos = time*44100*4/1000;
     if (pos < ctx.pos)
@@ -424,8 +422,8 @@ public:
     return time;
   }
 
-  virtual bool ReadTag(const std::string& file, std::string& title,
-                       std::string& artist, int& length) override
+  bool ReadTag(const std::string& file, std::string& title,
+               std::string& artist, int& length) override
   {
     QSFContext result;
     if (psf_load(file.c_str(), &psf_file_system, 0x41, 0, 0,
@@ -450,15 +448,13 @@ private:
 class ATTRIBUTE_HIDDEN CMyAddon : public kodi::addon::CAddonBase
 {
 public:
-  CMyAddon() { }
-  virtual ADDON_STATUS CreateInstance(int instanceType, std::string instanceID, KODI_HANDLE instance, KODI_HANDLE& addonInstance) override
+  CMyAddon() = default;
+  ADDON_STATUS CreateInstance(int instanceType, std::string instanceID, KODI_HANDLE instance, KODI_HANDLE& addonInstance) override
   {
     addonInstance = new CQSFCodec(instance);
     return ADDON_STATUS_OK;
   }
-  virtual ~CMyAddon()
-  {
-  }
+  virtual ~CMyAddon() = default;
 };
 
 
