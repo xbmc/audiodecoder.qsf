@@ -4,12 +4,10 @@ project(audiodecoder.qsf)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR})
 
 find_package(Kodi REQUIRED)
-find_package(p8-platform REQUIRED)
 find_package(ZLIB REQUIRED)
 
 include_directories(${KODI_INCLUDE_DIR}/..
                     ${ZLIB_INCLUDE_DIR}
-                    ${p8-platform_INCLUDE_DIRS}
                     ${PROJECT_SOURCE_DIR}/lib/psflib
                     ${PROJECT_SOURCE_DIR}/lib/Highly_Quixotic/Core)
 
@@ -21,7 +19,7 @@ set(QSF_SOURCES src/QSFCodec.cpp
 
 set(QSF_HEADERS src/RingBuffer.h)
 
-set(DEPLIBS ${p8-platform_LIBRARIES} highly_quixotic psflib ${ZLIB_LIBRARIES})
+set(DEPLIBS highly_quixotic psflib ${ZLIB_LIBRARIES})
 
 build_addon(audiodecoder.qsf QSF DEPLIBS)
 
