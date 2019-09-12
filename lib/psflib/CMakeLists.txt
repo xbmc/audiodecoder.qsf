@@ -4,5 +4,5 @@ project(psflib)
 set(SOURCES psf2fs.c
             psflib.c)
 
+set(CMAKE_POSITION_INDEPENDENT_CODE 1)
 add_library(psflib STATIC ${SOURCES})
-set_property(TARGET psflib PROPERTY POSITION_INDEPENDENT_CODE ON)
