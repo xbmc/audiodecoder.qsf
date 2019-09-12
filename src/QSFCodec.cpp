@@ -312,7 +312,6 @@ static bool Load(QSFContext* r)
   if (psf_load(r->file.c_str(), &psf_file_system, 0x41,
                0, 0, psf_info_meta, r, 0) <= 0)
   {
-    delete r;
     return false;
   }
 
@@ -324,7 +323,6 @@ static bool Load(QSFContext* r)
   if (psf_load(r->file.c_str(), &psf_file_system, 0x41,
                qsound_load, &r->rom, 0, 0, 0) < 0)
   {
-    delete r;
     return false;
   }
 
