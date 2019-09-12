@@ -9,10 +9,10 @@ find_package(ZLIB REQUIRED)
 include_directories(${KODI_INCLUDE_DIR}/..
                     ${ZLIB_INCLUDE_DIR}
                     ${PROJECT_SOURCE_DIR}/lib/psflib
-                    ${PROJECT_SOURCE_DIR}/lib/Highly_Quixotic/Core)
+                    ${PROJECT_SOURCE_DIR}/lib/highly_quixotic/Core)
 
 add_subdirectory(lib/psflib)
-add_subdirectory(lib/Highly_Quixotic)
+add_subdirectory(lib/highly_quixotic)
 
 set(QSF_SOURCES src/QSFCodec.cpp
                 src/RingBuffer.cpp)
