@@ -366,12 +366,12 @@ public:
     if (qsound_init())
       return false;
 
-    ctx.sample_buffer.Create(16384);
-    ctx.file = filename;
-    if (!Load(&ctx))
+    m_ctx.sample_buffer.Create(16384);
+    m_ctx.file = filename;
+    if (!Load(&m_ctx))
       return false;
 
-    totaltime = ctx.length;
+    totaltime = m_ctx.length;
     static enum AEChannel map[3] = {
       AE_CH_FL, AE_CH_FR, AE_CH_NULL
     };
@@ -387,19 +387,19 @@ public:
 
   int ReadPCM(uint8_t* buffer, int size, int& actualsize) override
   {
-    if (ctx.pos >= ctx.length*44100*4/1000)
+    if (m_ctx.pos >= m_ctx.length*44100*4/1000)
       return 1;
 
-    if (ctx.sample_buffer.getMaxReadSize() == 0) {
+    if (m_ctx.sample_buffer.getMaxReadSize() == 0) {
       short temp[4096];
       unsigned written=2048;
-      qsound_execute(&ctx.qsound_state[0], 0x7FFFFFFF, temp, &written);
-      ctx.sample_buffer.WriteData((const char*)temp, written*4);
+      qsound_execute(&m_ctx.qsound_state[0], 0x7FFFFFFF, temp, &written);
+      m_ctx.sample_buffer.WriteData((const char*)temp, written*4);
     }
 
-    int tocopy = std::min(size, (int)ctx.sample_buffer.getMaxReadSize());
-    ctx.sample_buffer.ReadData((char*)buffer, tocopy);
-    ctx.pos += tocopy;
+    int tocopy = std::min(size, (int)m_ctx.sample_buffer.getMaxReadSize());
+    m_ctx.sample_buffer.ReadData((char*)buffer, tocopy);
+    m_ctx.pos += tocopy;
     actualsize = tocopy;
     return 0;
   }
@@ -407,16 +407,16 @@ public:
   int64_t Seek(int64_t time) override
   {
     int64_t pos = time*44100*4/1000;
-    if (pos < ctx.pos)
+    if (pos < m_ctx.pos)
     {
-      Load(&ctx);
+      Load(&m_ctx);
     }
-    while (ctx.pos < pos)
+    while (m_ctx.pos < pos)
     {
       short temp[4096];
-      unsigned written=std::min((pos-ctx.pos)/4, (int64_t)2048);
-      qsound_execute(&ctx.qsound_state[0], 0x7FFFFFFF, temp, &written);
-      ctx.pos += written*4;
+      unsigned written=std::min((pos-m_ctx.pos)/4, (int64_t)2048);
+      qsound_execute(&m_ctx.qsound_state[0], 0x7FFFFFFF, temp, &written);
+      m_ctx.pos += written*4;
     }
 
     return time;
@@ -441,7 +441,7 @@ public:
   }
 
 private:
-  QSFContext ctx;
+  QSFContext m_ctx;
 };
 
 
