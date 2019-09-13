@@ -452,7 +452,7 @@ static void perform_nonnull_state_offsets(
 // Recompute the memory maps.
 // PERFORMS NO REGISTRATION with the actual R3000 state.
 //
-static void recompute_memory_maps(struct QSOUND_STATE *state) {
+static void EMU_CALL recompute_memory_maps(struct QSOUND_STATE *state) {
   //
   // First, just copy from the static tables
   //
