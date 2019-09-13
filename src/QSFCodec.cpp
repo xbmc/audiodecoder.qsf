@@ -17,49 +17,62 @@
  *
  */
 
+#include "CircularBuffer.h"
+#include "QSoundRom.h"
+
 #include <kodi/addon-instance/AudioDecoder.h>
 #include <kodi/Filesystem.h>
-#include "RingBuffer.h"
+#include <math.h>
 
-#include <algorithm>
-#include <iostream>
-
-extern "C" {
+extern "C"
+{
 #include "qsound.h"
 #include "psflib.h"
 
-static void * psf_file_fopen( const char * uri )
+static void* psf_file_fopen(const char * uri)
 {
-  kodi::vfs::CFile* file = new kodi::vfs::CFile;
-  if (!file->OpenFile(uri, 0))
-  {
-    delete file;
+  if (!uri)
     return nullptr;
+
+  std::string usedFile = uri;
+  kodi::vfs::CFile* file = new kodi::vfs::CFile;
+  if (!file->OpenFile(usedFile, 0))
+  {
+    // Transform to lower case and try on OpenFile again.
+    // Windows does not look about case thats why some not works.
+    std::string fileName = kodi::vfs::GetFileName(usedFile);
+    std::transform(fileName.begin(), fileName.end(), fileName.begin(), ::tolower);
+    usedFile = kodi::vfs::GetDirectoryName(usedFile) + fileName;
+    if (!file->OpenFile(usedFile, 0))
+    {
+      delete file;
+      return nullptr;
+    }
   }
 
   return file;
 }
 
-static size_t psf_file_fread( void * buffer, size_t size, size_t count, void * handle )
+static size_t psf_file_fread(void * buffer, size_t size, size_t count, void * handle)
 {
   kodi::vfs::CFile* file = static_cast<kodi::vfs::CFile*>(handle);
   return file->Read(buffer, size*count);
 }
 
-static int psf_file_fseek( void * handle, int64_t offset, int whence )
+static int psf_file_fseek(void * handle, int64_t offset, int whence)
 {
   kodi::vfs::CFile* file = static_cast<kodi::vfs::CFile*>(handle);
   return file->Seek(offset, whence) > -1 ? 0 : -1;
 }
 
-static int psf_file_fclose( void * handle )
+static int psf_file_fclose(void * handle)
 {
   delete static_cast<kodi::vfs::CFile*>(handle);
 
   return 0;
 }
 
-static long psf_file_ftell( void * handle )
+static long psf_file_ftell(void * handle)
 {
   kodi::vfs::CFile* file = static_cast<kodi::vfs::CFile*>(handle);
   return file->GetPosition();
@@ -75,197 +88,88 @@ const psf_file_callbacks psf_file_system =
   psf_file_ftell
 };
 
+static void print_message(void * context, const char * message)
+{
+  kodi::Log(ADDON_LOG_DEBUG, "QSF codec message: '%s'", message);
 }
-
-class qsound_rom
-{
-  public:
-    struct valid_range
-    {
-      uint32_t start;
-      uint32_t size;
-    };
-
-    std::vector<uint8_t> m_aKey;
-    std::vector<valid_range> m_aKeyValid;
-    std::vector<uint8_t> m_aZ80ROM;
-    std::vector<valid_range> m_aZ80ROMValid;
-    std::vector<uint8_t> m_aSampleROM;
-    std::vector<valid_range> m_aSampleROMValid;
-
-    qsound_rom() {}
-
-    void superimpose_from( const qsound_rom & from )
-    {
-      superimpose_section_from("KEY", from.m_aKey      , from.m_aKeyValid      );
-      superimpose_section_from("Z80", from.m_aZ80ROM   , from.m_aZ80ROMValid   );
-      superimpose_section_from("SMP", from.m_aSampleROM, from.m_aSampleROMValid);
-    }
-
-    void upload_section( const char * section, uint32_t start, const uint8_t * data, uint32_t size )
-    {
-      std::vector<uint8_t> * pArray = NULL;
-      std::vector<valid_range> * pArrayValid = NULL;
-      uint32_t maxsize = 0x7FFFFFFF;
-
-      if ( !strcmp( section, "KEY" ) ) { pArray = &m_aKey; pArrayValid = &m_aKeyValid; maxsize = 11; }
-      else if ( !strcmp( section, "Z80" ) ) { pArray = &m_aZ80ROM; pArrayValid = &m_aZ80ROMValid; }
-      else if ( !strcmp( section, "SMP" ) ) { pArray = &m_aSampleROM; pArrayValid = &m_aSampleROMValid; }
-      else return;
-
-      if ( ( start + size ) < start )
-      {
-        return;
-      }
-
-      uint32_t newsize = start + size;
-      uint32_t oldsize = pArray->size();
-      if ( newsize > maxsize )
-      {
-        return;
-      }
-
-      if ( newsize > oldsize )
-        pArray->resize( newsize );
-
-      memcpy(&(*pArray)[start], data, size);
-
-      oldsize = pArrayValid->size();
-      pArrayValid->resize( oldsize + 1 );
-      pArrayValid->back().start = start;
-      pArrayValid->back().size = size;
-    }
-
-    void clear()
-    {
-      m_aKey.resize(0);
-      m_aKeyValid.resize(0);
-      m_aZ80ROM.resize(0);
-      m_aZ80ROMValid.resize(0);
-      m_aSampleROM.resize(0);
-      m_aSampleROMValid.resize(0);
-    }
-
-  private:
-    void superimpose_section_from(const char * section,
-                                  const std::vector<uint8_t> & from,
-                                  const std::vector<valid_range> & fromvalid )
-    {
-      for ( unsigned i = 0; i < fromvalid.size(); i++ )
-      {
-        const valid_range & range = fromvalid[ i ];
-        uint32_t start = range.start;
-        uint32_t size = range.size;
-        if ( ( start >= from.size() ) ||
-            ( size >= from.size() ) ||
-            ( ( start + size ) > from.size() ) )
-        {
-          return;
-        }
-
-        upload_section( section, start, &from[start], size );
-      }
-    }
-};
-
-
-struct QSFContext
-{
-  qsound_rom rom;
-  int64_t length;
-  int sample_rate;
-  int64_t pos;
-  int year;
-  std::string file;
-  std::vector<uint8_t> qsound_state;
-  CRingBuffer sample_buffer;
-  std::string title;
-  std::string album;
-};
-
 
 #define BORK_TIME 0xC0CAC01A
 static unsigned long parse_time_crap(const char *input)
 {
-  if (!input) return BORK_TIME;
-  int len = strlen(input);
-  if (!len) return BORK_TIME;
-  int value = 0;
+  unsigned long value = 0;
+  unsigned long multiplier = 1000;
+  const char * ptr = input;
+  unsigned long colon_count = 0;
+
+  while (*ptr && ((*ptr >= '0' && *ptr <= '9') || *ptr == ':'))
   {
-    int i;
-    for (i = len - 1; i >= 0; i--)
+    colon_count += *ptr == ':';
+    ++ptr;
+  }
+  if (colon_count > 2)
+    return BORK_TIME;
+  if (*ptr && *ptr != '.' && *ptr != ',')
+    return BORK_TIME;
+  if (*ptr)
+    ++ptr;
+  while (*ptr && *ptr >= '0' && *ptr <= '9')
+    ++ptr;
+  if (*ptr)
+    return BORK_TIME;
+
+  ptr = strrchr(input, ':');
+  if (!ptr)
+    ptr = input;
+  for (;;)
+  {
+    char * end;
+    if (ptr != input)
+      ++ptr;
+    if (multiplier == 1000)
     {
-      if ((input[i] < '0' || input[i] > '9') && input[i] != ':' && input[i] != ',' && input[i] != '.')
-      {
+      double temp = strtod(ptr, nullptr);
+      if (temp >= 60.0)
         return BORK_TIME;
-      }
+      value = (long)(temp * 1000.0f);
     }
-  }
-  std::string foo = input;
-  char *bar = (char *) &foo[0];
-  char *strs = bar + foo.size() - 1;
-  while (strs > bar && (*strs >= '0' && *strs <= '9'))
-  {
-    strs--;
-  }
-  if (*strs == '.' || *strs == ',')
-  {
-    // fraction of a second
-    strs++;
-    if (strlen(strs) > 3) strs[3] = 0;
-    value = atoi(strs);
-    switch (strlen(strs))
+    else
     {
-      case 1:
-        value *= 100;
-        break;
-      case 2:
-        value *= 10;
-        break;
+      unsigned long temp = strtoul(ptr, &end, 10);
+      if (temp >= 60 && multiplier < 3600000)
+        return BORK_TIME;
+      value += temp * multiplier;
     }
-    strs--;
-    *strs = 0;
-    strs--;
+    if (ptr == input)
+      break;
+    ptr -= 2;
+    while (ptr > input && *ptr != ':')
+      --ptr;
+    multiplier *= 60;
   }
-  while (strs > bar && (*strs >= '0' && *strs <= '9'))
-  {
-    strs--;
-  }
-  // seconds
-  if (*strs < '0' || *strs > '9') strs++;
-  value += atoi(strs) * 1000;
-  if (strs > bar)
-  {
-    strs--;
-    *strs = 0;
-    strs--;
-    while (strs > bar && (*strs >= '0' && *strs <= '9'))
-    {
-      strs--;
-    }
-    if (*strs < '0' || *strs > '9') strs++;
-    value += atoi(strs) * 60000;
-    if (strs > bar)
-    {
-      strs--;
-      *strs = 0;
-      strs--;
-      while (strs > bar && (*strs >= '0' && *strs <= '9'))
-      {
-        strs--;
-      }
-      value += atoi(strs) * 3600000;
-    }
-  }
+
   return value;
 }
+
+struct QSFContext
+{
+  int length = 0;
+  int fade = 0;
+  int year;
+  std::string title;
+  std::string artist;
+  std::string album;
+};
 
 static int psf_info_meta(void * context, const char * name, const char * value)
 {
   QSFContext* qsf = (QSFContext*)context;
 
-  if (!strcasecmp(name, "game"))
+  if (!strcasecmp(name, "title"))
+    qsf->title = value;
+  else if (!strcasecmp(name, "game"))
     qsf->album = value;
+  else if (!strcasecmp(name, "artist"))
+    qsf->artist = value;
   else if (!strcasecmp(name, "year"))
     qsf->year = atoi(value);
   else if (!strcasecmp(name, "length"))
@@ -274,6 +178,12 @@ static int psf_info_meta(void * context, const char * name, const char * value)
     if (temp != BORK_TIME)
       qsf->length = temp;
   }
+  else if (!strcasecmp(name, "fade"))
+  {
+    int temp = parse_time_crap(value);
+    if (temp != BORK_TIME)
+      qsf->fade = temp;
+  }
 
   return 0;
 }
@@ -281,20 +191,21 @@ static int psf_info_meta(void * context, const char * name, const char * value)
 static int qsound_load(void * context, const uint8_t * exe, size_t exe_size,
                        const uint8_t * reserved, size_t reserved_size)
 {
-  qsound_rom * rom = ( qsound_rom * ) context;
+  qsound_rom* rom = (qsound_rom*)context;
 
   for (;;)
   {
     char s[4];
-    if ( exe_size < 11 ) break;
-    memcpy( s, exe, 3 ); exe += 3; exe_size -= 3;
+    if (exe_size < 11)
+      break;
+    memcpy(s, exe, 3); exe += 3; exe_size -= 3;
     s [3] = 0;
     uint32_t dataofs = *(uint32_t*)exe; exe += 4; exe_size -= 4;
     uint32_t datasize = *(uint32_t*)exe; exe += 4; exe_size -= 4;
-    if ( datasize > exe_size )
+    if (datasize > exe_size)
       return -1;
 
-    rom->upload_section( s, dataofs, exe, datasize );
+    rom->upload_section(s, dataofs, exe, datasize);
 
     exe += datasize;
     exe_size -= datasize;
@@ -303,50 +214,10 @@ static int qsound_load(void * context, const uint8_t * exe, size_t exe_size,
   return 0;
 }
 
+} /* extern "C"  */
+
 static __inline__ uint32_t Endian_Swap32(uint32_t x) {
         return((x<<24)|((x<<8)&0x00FF0000)|((x>>8)&0x0000FF00)|(x>>24));
-}
-
-static bool Load(QSFContext* r)
-{
-  if (psf_load(r->file.c_str(), &psf_file_system, 0x41,
-               0, 0, psf_info_meta, r, 0) <= 0)
-  {
-    delete r;
-    return false;
-  }
-
-  r->qsound_state.resize(qsound_get_state_size());
-  void* pEmu = &r->qsound_state[0];
-  qsound_clear_state(pEmu);
-  r->rom.clear();
-
-  if (psf_load(r->file.c_str(), &psf_file_system, 0x41,
-               qsound_load, &r->rom, 0, 0, 0) < 0)
-  {
-    delete r;
-    return false;
-  }
-
-  if(r->rom.m_aKey.size() == 11)
-  {
-    uint8_t * ptr = &r->rom.m_aKey[0];
-    uint32_t swap_key1 = Endian_Swap32( *( uint32_t * )( ptr +  0 ) );
-    uint32_t swap_key2 = Endian_Swap32( *( uint32_t * )( ptr +  4 ) );
-    uint32_t addr_key  = Endian_Swap32( *( uint16_t * )( ptr +  8 ) );
-    uint8_t  xor_key   =                                      *( ptr + 10 );
-    qsound_set_kabuki_key( pEmu, swap_key1, swap_key2, addr_key, xor_key );
-  }
-  else
-  {
-    qsound_set_kabuki_key( pEmu, 0, 0, 0, 0 );
-  }
-
-  qsound_set_z80_rom( pEmu, &r->rom.m_aZ80ROM[0], r->rom.m_aZ80ROM.size() );
-  qsound_set_sample_rom( pEmu, &r->rom.m_aSampleROM[0], r->rom.m_aSampleROM.size() );
-  r->pos = 0;
-
-  return true;
 }
 
 class ATTRIBUTE_HIDDEN CQSFCodec : public kodi::addon::CInstanceAudioDecoder
@@ -355,110 +226,406 @@ public:
   CQSFCodec(KODI_HANDLE instance) :
     CInstanceAudioDecoder(instance) {}
 
-  virtual ~CQSFCodec()
-  {
-  }
+  virtual ~CQSFCodec() = default;
 
-  virtual bool Init(const std::string& filename, unsigned int filecache,
-                    int& channels, int& samplerate,
-                    int& bitspersample, int64_t& totaltime,
-                    int& bitrate, AEDataFormat& format,
-                    std::vector<AEChannel>& channellist) override
-  {
-    if (qsound_init())
-      return false;
-
-    ctx.sample_buffer.Create(16384);
-    ctx.file = filename;
-    if (!Load(&ctx))
-      return false;
-
-    totaltime = ctx.length;
-    static enum AEChannel map[3] = {
-      AE_CH_FL, AE_CH_FR, AE_CH_NULL
-    };
-    format = AE_FMT_S16NE;
-    channellist = { AE_CH_FL, AE_CH_FR };
-    channels = 2;
-    bitspersample = 16;
-    bitrate = 0.0;
-    samplerate = 44100;
-
-    return true;
-  }
-
-  virtual int ReadPCM(uint8_t* buffer, int size, int& actualsize) override
-  {
-    if (ctx.pos >= ctx.length*44100*4/1000)
-      return 1;
-
-    if (ctx.sample_buffer.getMaxReadSize() == 0) {
-      short temp[4096];
-      unsigned written=2048;
-      qsound_execute(&ctx.qsound_state[0], 0x7FFFFFFF, temp, &written);
-      ctx.sample_buffer.WriteData((const char*)temp, written*4);
-    }
-
-    int tocopy = std::min(size, (int)ctx.sample_buffer.getMaxReadSize());
-    ctx.sample_buffer.ReadData((char*)buffer, tocopy);
-    ctx.pos += tocopy;
-    actualsize = tocopy;
-    return 0;
-  }
-
-  virtual int64_t Seek(int64_t time) override
-  {
-    int64_t pos = time*44100*4/1000;
-    if (pos < ctx.pos)
-    {
-      Load(&ctx);
-    }
-    while (ctx.pos < pos)
-    {
-      short temp[4096];
-      unsigned written=std::min((pos-ctx.pos)/4, (int64_t)2048);
-      qsound_execute(&ctx.qsound_state[0], 0x7FFFFFFF, temp, &written);
-      ctx.pos += written*4;
-    }
-
-    return time;
-  }
-
-  virtual bool ReadTag(const std::string& file, std::string& title,
-                       std::string& artist, int& length) override
-  {
-    QSFContext result;
-    if (psf_load(file.c_str(), &psf_file_system, 0x41, 0, 0,
-                 psf_info_meta, &result, 0) <= 0)
-    {
-      return false;
-    }
-    const char* rslash = strrchr(file.c_str(),'/');
-    if (!rslash)
-      rslash = strrchr(file.c_str(),'\\');
-    title = rslash+1;
-    artist = result.album;
-    length = result.length/1000;
-    return true;
-  }
+  bool Init(const std::string& filename, unsigned int filecache,
+            int& channels, int& samplerate,
+            int& bitspersample, int64_t& totaltime,
+            int& bitrate, AEDataFormat& format,
+            std::vector<AEChannel>& channellist) override;
+  int ReadPCM(uint8_t* buffer, int size, int& actualsize) override;
+  int64_t Seek(int64_t time) override;
+  bool ReadTag(const std::string& file, std::string& title,
+               std::string& artist, int& length) override;
 
 private:
-  QSFContext ctx;
+  bool Load();
+
+  inline uint64_t time_to_samples(double p_time, uint32_t p_sample_rate)
+  {
+    return (uint64_t)floor((double)p_sample_rate * p_time + 0.5);
+  }
+
+  inline void calcfade()
+  {
+    m_songLength = mul_div(m_tagSong_ms-m_posDelta,24038,1000);
+    m_fadeLength = mul_div(m_tagFade_ms,24038,1000);
+  }
+
+  inline int mul_div(int number, int numerator, int denominator)
+  {
+    long long ret = number;
+    ret *= numerator;
+    ret /= denominator;
+    return (int) ret;
+  }
+
+  int m_cfgEndSilenceSeconds = 5;
+  bool m_cfgSuppressOpeningSilence = true;
+  bool m_cfgSuppressEndSilence = true;
+  int m_cfgDefaultLength = 170000;
+  int m_cfgDefaultFade = 10000;
+
+  bool m_noLoop = true;
+  bool m_eof = false;
+
+  std::string m_usedFilename;
+  std::vector<uint8_t> m_qsoundState;
+  std::vector<int16_t> m_sampleBuffer;
+  circular_buffer<int16_t> m_silenceTestBuffer = 0;
+  qsound_rom m_rom;
+  int m_err = 0;
+  int64_t m_qsfEmuPos = 0;
+  int m_dataWritten = 0;
+  int m_remainder = 0;
+  int m_posDelta = 0;
+  int m_startsilence = 0;
+  int m_silence = 0;
+
+  int m_songLength;
+  int m_fadeLength;
+  int m_tagSong_ms;
+  int m_tagFade_ms;
+
+  QSFContext m_ctx;
 };
+
+bool CQSFCodec::Init(const std::string& filename, unsigned int filecache,
+                     int& channels, int& samplerate,
+                     int& bitspersample, int64_t& totaltime,
+                     int& bitrate, AEDataFormat& format,
+                     std::vector<AEChannel>& channellist)
+{
+  if (qsound_init())
+  {
+    kodi::Log(ADDON_LOG_ERROR, "QSound emulator static initialization failed");
+    return false;
+  }
+
+  m_usedFilename = filename;
+  if (!Load())
+    return false;
+
+  totaltime = m_ctx.length;
+  format = AE_FMT_S16NE;
+  channellist = { AE_CH_FL, AE_CH_FR };
+  channels = 2;
+  bitspersample = 16;
+  bitrate = 0;
+  samplerate = 24038;
+
+  return true;
+}
+
+int CQSFCodec::ReadPCM(uint8_t* buffer, int size, int& actualsize)
+{
+  if (m_err < 0)
+    return 1;
+  if (m_eof && !m_silenceTestBuffer.data_available())
+    return -1;
+  if (m_noLoop && m_tagSong_ms && (m_posDelta + mul_div(m_dataWritten, 1000, 24038)) >= m_tagSong_ms + m_tagFade_ms)
+    return 1;
+
+  unsigned int written = 0;
+
+  int usedSize = size / 2 / sizeof(int16_t);
+
+  int samples;
+
+  if (m_noLoop)
+  {
+    samples = (m_songLength + m_fadeLength) - m_dataWritten;
+    if (samples > usedSize)
+      samples = usedSize;
+  }
+  else
+  {
+    samples = usedSize;
+  }
+
+  if (m_cfgSuppressEndSilence)
+  {
+    m_sampleBuffer.resize(usedSize * 2);
+
+    if (!m_eof)
+    {
+      unsigned free_space = m_silenceTestBuffer.free_space() / 2;
+      while (free_space)
+      {
+        unsigned samples_to_render;
+        if (m_remainder)
+        {
+          samples_to_render = m_remainder;
+          m_remainder = 0;
+        }
+        else
+        {
+          samples_to_render = free_space;
+          if (samples_to_render > usedSize)
+            samples_to_render = usedSize;
+          m_err = qsound_execute(m_qsoundState.data(), 0x7FFFFFFF, m_sampleBuffer.data(), & samples_to_render);
+          if (m_err < 0)
+          {
+            kodi::Log(ADDON_LOG_ERROR, "Execution halted with an error: '%i'", m_err);
+            return 1;
+          }
+          if (!samples_to_render)
+          {
+            kodi::Log(ADDON_LOG_ERROR, "Execution no samples to render");
+            return 1;
+          }
+        }
+        m_silenceTestBuffer.write(m_sampleBuffer.data(), samples_to_render * 2);
+        free_space -= samples_to_render;
+      }
+    }
+
+    if (m_silenceTestBuffer.test_silence())
+    {
+      m_eof = true;
+      return -1;
+    }
+
+    written = m_silenceTestBuffer.data_available() / 2;
+    if (written > samples)
+      written = samples;
+    m_silenceTestBuffer.read(m_sampleBuffer.data(), written * 2);
+  }
+  else
+  {
+    m_sampleBuffer.resize(samples * 2);
+
+    if (m_remainder)
+    {
+      written = m_remainder;
+      m_remainder = 0;
+    }
+    else
+    {
+      written = samples;
+
+      m_err = qsound_execute(m_qsoundState.data(), 0x7FFFFFFF, m_sampleBuffer.data(), & written);
+      if (m_err < 0)
+      {
+        kodi::Log(ADDON_LOG_ERROR, "Execution halted with an error: '%i'", m_err);
+        return 1;
+      }
+      if (!written)
+      {
+        kodi::Log(ADDON_LOG_ERROR, "Execution no written data");
+        return 1;
+      }
+    }
+  }
+
+  m_qsfEmuPos += double(written) / 24038.;
+
+  int d_start, d_end;
+  d_start = m_dataWritten;
+  m_dataWritten += written;
+  d_end = m_dataWritten;
+
+  if (m_tagSong_ms && d_end > m_songLength && m_noLoop)
+  {
+    short * foo = m_sampleBuffer.data();
+    for (int n = d_start; n < d_end; ++n)
+    {
+      if (n > m_songLength)
+      {
+        if (n > m_songLength + m_fadeLength)
+        {
+          *(uint32_t*)foo = 0;
+        }
+        else
+        {
+          int bleh = m_songLength + m_fadeLength - n;
+          foo[0] = mul_div(foo[0], bleh, m_fadeLength);
+          foo[1] = mul_div(foo[1], bleh, m_fadeLength);
+        }
+      }
+      foo += 2;
+    }
+  }
+
+  memcpy(buffer, m_sampleBuffer.data(), written*2*sizeof(int16_t));
+  actualsize = written*2*sizeof(int16_t);
+
+  return 0;
+}
+
+int64_t CQSFCodec::Seek(int64_t time)
+{
+  double p_seconds = double(time) / 1000.0;
+  m_eof = false;
+
+  double buffered_time = (double)(m_silenceTestBuffer.data_available() / 2) / 24038.0;
+
+  m_qsfEmuPos += buffered_time;
+
+  m_silenceTestBuffer.reset();
+
+  if (p_seconds < m_qsfEmuPos)
+  {
+    Load();
+  }
+  unsigned int howmany = (int)(time_to_samples(p_seconds - m_qsfEmuPos, 24038));
+
+  // more abortable, and emu doesn't like doing huge numbers of samples per call anyway
+  void* pEmu = m_qsoundState.data();
+  while (howmany)
+  {
+    unsigned todo = howmany;
+    if (todo > 2048)
+      todo = 2048;
+    int rtn = qsound_execute(pEmu, 0x7FFFFFFF, 0, &todo);
+    if (rtn < 0 || ! todo)
+    {
+      m_eof = true;
+      return -1;
+    }
+    howmany -= todo;
+  }
+
+  m_dataWritten = 0;
+  m_posDelta = (int)(p_seconds * 1000.);
+  m_qsfEmuPos = p_seconds;
+
+  calcfade();
+
+  return time;
+}
+
+bool CQSFCodec::Load()
+{
+  m_qsoundState.resize(qsound_get_state_size());
+  void* pEmu = m_qsoundState.data();
+  qsound_clear_state(pEmu);
+  m_rom.clear();
+
+  if (psf_load(m_usedFilename.c_str(), &psf_file_system, 0x41,
+               qsound_load, &m_rom, psf_info_meta, &m_ctx, 0, print_message, nullptr) < 0)
+  {
+    kodi::Log(ADDON_LOG_ERROR, "Failed to load '%s'", m_usedFilename.c_str());
+    return false;
+  }
+
+  m_tagSong_ms = m_ctx.length;
+  if (!m_tagSong_ms)
+    m_tagSong_ms = m_cfgDefaultLength;
+
+  m_tagFade_ms = m_ctx.fade;
+  if (!m_tagFade_ms)
+    m_tagFade_ms = m_cfgDefaultFade;
+
+  if (m_rom.m_aKey.size() == 11)
+  {
+    uint8_t * ptr = &m_rom.m_aKey[0];
+    uint32_t swap_key1 = Endian_Swap32(*(uint32_t*)(ptr +  0));
+    uint32_t swap_key2 = Endian_Swap32(*(uint32_t*)(ptr +  4));
+    uint32_t addr_key  = Endian_Swap32(*(uint16_t*)(ptr +  8));
+    uint8_t  xor_key   =                          *(ptr + 10);
+    qsound_set_kabuki_key(pEmu, swap_key1, swap_key2, addr_key, xor_key);
+  }
+  else
+  {
+    qsound_set_kabuki_key(pEmu, 0, 0, 0, 0);
+  }
+
+  qsound_set_z80_rom(pEmu, &m_rom.m_aZ80ROM[0], m_rom.m_aZ80ROM.size());
+  qsound_set_sample_rom(pEmu, &m_rom.m_aSampleROM[0], m_rom.m_aSampleROM.size());
+
+  m_eof = false;
+  m_err = 0;
+  m_qsfEmuPos = 0;
+  m_startsilence = 0;
+  m_silence = 0;
+
+  calcfade();
+
+  unsigned int skip_max = m_cfgEndSilenceSeconds * 24038;
+
+  if (m_cfgSuppressOpeningSilence) // ohcrap
+  {
+    for (;;)
+    {
+      unsigned int skip_howmany = skip_max - m_silence;
+      if (skip_howmany > 1024)
+        skip_howmany = 1024;
+      m_sampleBuffer.resize(skip_howmany * 2);
+      int rtn = qsound_execute(pEmu, 0x7FFFFFFF, m_sampleBuffer.data(), &skip_howmany);
+      if (rtn < 0)
+        return false;
+      short * foo = m_sampleBuffer.data();
+      unsigned int i;
+      for (i = 0; i < skip_howmany; ++i)
+      {
+        if (foo[0] || foo[1])
+          break;
+        foo += 2;
+      }
+      m_silence += i;
+      if (i < skip_howmany)
+      {
+        m_remainder = skip_howmany - i;
+        memmove(m_sampleBuffer.data(), foo, m_remainder * sizeof(short) * 2);
+        break;
+      }
+      if (m_silence >= skip_max)
+      {
+        m_eof = true;
+        break;
+      }
+    }
+
+    m_startsilence += m_silence;
+    m_silence = 0;
+  }
+
+  if (m_cfgSuppressEndSilence)
+    m_silenceTestBuffer.resize(skip_max * 2);
+
+  return true;
+}
+
+bool CQSFCodec::ReadTag(const std::string& file, std::string& title,
+                        std::string& artist, int& length)
+{
+  QSFContext result;
+  if (psf_load(file.c_str(), &psf_file_system, 0x41, nullptr, nullptr,
+               psf_info_meta, &result, 0, print_message, nullptr) <= 0)
+  {
+    return false;
+  }
+
+  if (!result.title.empty())
+  {
+    title = result.title;
+  }
+  else
+  {
+    title = kodi::vfs::GetFileName(file);
+    title.erase(title.find_last_of("."), std::string::npos);
+  }
+
+  if (!result.album.empty())
+    artist = result.album;
+  else if (!result.artist.empty())
+    artist = result.artist;
+  length = result.length / 1000;
+  return true;
+}
 
 
 class ATTRIBUTE_HIDDEN CMyAddon : public kodi::addon::CAddonBase
 {
 public:
-  CMyAddon() { }
-  virtual ADDON_STATUS CreateInstance(int instanceType, std::string instanceID, KODI_HANDLE instance, KODI_HANDLE& addonInstance) override
+  CMyAddon() = default;
+  ADDON_STATUS CreateInstance(int instanceType, std::string instanceID, KODI_HANDLE instance, KODI_HANDLE& addonInstance) override
   {
     addonInstance = new CQSFCodec(instance);
     return ADDON_STATUS_OK;
   }
-  virtual ~CMyAddon()
-  {
-  }
+  virtual ~CMyAddon() = default;
 };
 
 

@@ -1,9 +1,10 @@
 cmake_minimum_required(VERSION 3.5)
-project(Highly_Quixotic)
+project(highly_quixotic)
 
 set(SOURCES Core/kabuki.c
             Core/qmix.c
             Core/qsound.c
+            Core/qsound_ctr.c
             Core/z80.c)
 
 add_definitions(-DEMU_COMPILE -DEMU_LITTLE_ENDIAN)

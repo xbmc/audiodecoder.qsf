@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addon
   id="audiodecoder.qsf"
-  version="2.1.0"
+  version="2.2.0"
   name="QSF Audio Decoder"
   provider-name="spiff">
   <requires>@ADDON_DEPENDS@</requires>
@@ -12,8 +12,11 @@
     tags="true"
     library_@PLATFORM@="@LIBRARY_FILENAME@"/>
   <extension point="xbmc.addon.metadata">
-    <summary lang="en">QSF Audio Decoder</summary>
-    <description lang="en">QSF Audio Decoder</description>
+    <summary lang="en">Capcom QSound QSF Audio Decoder</summary>
+    <description lang="en">Adds decoding support for Capcom QSound Sound Format files (.QSF/.MINIQSF).
+
+QSound is the original name for a positional three-dimensional (3D) sound processing algorithm from QSound Labs that creates 3D audio effects from multiple monophonic sources and sums the outputs to two channels for presentation over regular stereo speakers.
+</description>
     <platform>@PLATFORM@</platform>
   </extension>
 </addon>
