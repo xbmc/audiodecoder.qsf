@@ -14,10 +14,10 @@ include_directories(${KODI_INCLUDE_DIR}/..
 add_subdirectory(lib/psflib)
 add_subdirectory(lib/highly_quixotic)
 
-set(QSF_SOURCES src/QSFCodec.cpp
-                src/RingBuffer.cpp)
+set(QSF_SOURCES src/QSFCodec.cpp)
 
-set(QSF_HEADERS src/RingBuffer.h)
+set(QSF_HEADERS src/CircularBuffer.h
+                src/QSoundRom.h)
 
 set(DEPLIBS highly_quixotic psflib ${ZLIB_LIBRARIES})
 
