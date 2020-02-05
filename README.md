@@ -3,7 +3,8 @@
 This is a [Kodi](https://kodi.tv) audio decoder addon for QSF files.
 
 [![Build Status](https://travis-ci.org/xbmc/audiodecoder.qsf.svg?branch=Matrix)](https://travis-ci.org/xbmc/audiodecoder.qsf/branches)
-[![Build Status](https://ci.appveyor.com/api/projects/status/github/xbmc/audiodecoder.qsf?branch=Matrix&svg=true)](https://ci.appveyor.com/project/xbmc/audiodecoder-qsf?branch=Matrix)
+[![Build Status](https://dev.azure.com/teamkodi/binary-addons/_apis/build/status/xbmc.audiodecoder.qsf?branchName=Matrix)](https://dev.azure.com/teamkodi/binary-addons/_build/latest?definitionId=12&branchName=Matrix)
+<!--- [![Build Status](https://ci.appveyor.com/api/projects/status/github/xbmc/audiodecoder.qsf?branch=Matrix&svg=true)](https://ci.appveyor.com/project/xbmc/audiodecoder-qsf?branch=Matrix) -->
 
 ## Build instructions
 
