@@ -212,8 +212,8 @@ static __inline__ uint32_t Endian_Swap32(uint32_t x) {
 class ATTRIBUTE_HIDDEN CQSFCodec : public kodi::addon::CInstanceAudioDecoder
 {
 public:
-  CQSFCodec(KODI_HANDLE instance) :
-    CInstanceAudioDecoder(instance) {}
+  CQSFCodec(KODI_HANDLE instance, const std::string& version) :
+    CInstanceAudioDecoder(instance, version) {}
 
   virtual ~CQSFCodec() = default;
 
@@ -609,9 +609,9 @@ class ATTRIBUTE_HIDDEN CMyAddon : public kodi::addon::CAddonBase
 {
 public:
   CMyAddon() = default;
-  ADDON_STATUS CreateInstance(int instanceType, std::string instanceID, KODI_HANDLE instance, KODI_HANDLE& addonInstance) override
+  ADDON_STATUS CreateInstance(int instanceType, const std::string& instanceID, KODI_HANDLE instance, const std::string& version, KODI_HANDLE& addonInstance) override
   {
-    addonInstance = new CQSFCodec(instance);
+    addonInstance = new CQSFCodec(instance, version);
     return ADDON_STATUS_OK;
   }
   virtual ~CMyAddon() = default;
