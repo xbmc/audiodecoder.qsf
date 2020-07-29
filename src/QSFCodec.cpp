@@ -220,12 +220,11 @@ public:
   bool Init(const std::string& filename, unsigned int filecache,
             int& channels, int& samplerate,
             int& bitspersample, int64_t& totaltime,
-            int& bitrate, AEDataFormat& format,
-            std::vector<AEChannel>& channellist) override;
+            int& bitrate, AudioEngineDataFormat& format,
+            std::vector<AudioEngineChannel>& channellist) override;
   int ReadPCM(uint8_t* buffer, int size, int& actualsize) override;
   int64_t Seek(int64_t time) override;
-  bool ReadTag(const std::string& file, std::string& title,
-               std::string& artist, int& length) override;
+  bool ReadTag(const std::string& filename, kodi::addon::AudioDecoderInfoTag& tag) override;
 
 private:
   bool Load();
@@ -282,8 +281,8 @@ private:
 bool CQSFCodec::Init(const std::string& filename, unsigned int filecache,
                      int& channels, int& samplerate,
                      int& bitspersample, int64_t& totaltime,
-                     int& bitrate, AEDataFormat& format,
-                     std::vector<AEChannel>& channellist)
+                     int& bitrate, AudioEngineDataFormat& format,
+                     std::vector<AudioEngineChannel>& channellist)
 {
   if (qsound_init())
   {
@@ -296,8 +295,8 @@ bool CQSFCodec::Init(const std::string& filename, unsigned int filecache,
     return false;
 
   totaltime = m_ctx.length;
-  format = AE_FMT_S16NE;
-  channellist = { AE_CH_FL, AE_CH_FR };
+  format = AUDIOENGINE_FMT_S16NE;
+  channellist = { AUDIOENGINE_CH_FL, AUDIOENGINE_CH_FR };
   channels = 2;
   bitspersample = 16;
   bitrate = 0;
@@ -576,31 +575,33 @@ bool CQSFCodec::Load()
   return true;
 }
 
-bool CQSFCodec::ReadTag(const std::string& file, std::string& title,
-                        std::string& artist, int& length)
+bool CQSFCodec::ReadTag(const std::string& filename, kodi::addon::AudioDecoderInfoTag& tag)
 {
   QSFContext result;
-  if (psf_load(file.c_str(), &psf_file_system, 0x41, nullptr, nullptr,
+  if (psf_load(filename.c_str(), &psf_file_system, 0x41, nullptr, nullptr,
                psf_info_meta, &result, 0, print_message, nullptr) <= 0)
   {
     return false;
   }
 
+  std::string title;
   if (!result.title.empty())
   {
     title = result.title;
   }
   else
   {
-    title = kodi::vfs::GetFileName(file);
+    title = kodi::vfs::GetFileName(filename);
     title.erase(title.find_last_of("."), std::string::npos);
   }
 
+  tag.SetTitle(title);
+
   if (!result.album.empty())
-    artist = result.album;
+    tag.SetArtist(result.album);
   else if (!result.artist.empty())
-    artist = result.artist;
-  length = result.length / 1000;
+    tag.SetArtist(result.artist);
+  tag.SetDuration(result.length / 1000);
   return true;
 }
 
