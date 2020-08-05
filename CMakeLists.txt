@@ -17,6 +17,7 @@ add_subdirectory(lib/highly_quixotic)
 set(QSF_SOURCES src/QSFCodec.cpp)
 
 set(QSF_HEADERS src/CircularBuffer.h
+                src/QSFCodec.h
                 src/QSoundRom.h)
 
 set(DEPLIBS highly_quixotic psflib ${ZLIB_LIBRARIES})
