@@ -140,7 +140,9 @@ extern "C"
     else if (!strcasecmp(name, "artist"))
       qsf->artist = value;
     else if (!strcasecmp(name, "year"))
-      qsf->year = atoi(value);
+      qsf->year = value;
+    else if (!strcasecmp(name, "comment"))
+      qsf->comment = value;
     else if (!strcasecmp(name, "length"))
     {
       int temp = parse_time_crap(value);
@@ -526,10 +528,15 @@ bool CQSFCodec::ReadTag(const std::string& filename, kodi::addon::AudioDecoderIn
 
   tag.SetTitle(title);
 
-  if (!result.album.empty())
-    tag.SetArtist(result.album);
-  else if (!result.artist.empty())
+  if (!result.artist.empty())
     tag.SetArtist(result.artist);
+  else
+    tag.SetArtist(result.album);
+  tag.SetAlbum(result.album);
+  tag.SetReleaseDate(result.year);
+  tag.SetComment(result.comment);
+  tag.SetChannels(2);
+  tag.SetSamplerate(24038);
   tag.SetDuration(result.length / 1000);
   return true;
 }

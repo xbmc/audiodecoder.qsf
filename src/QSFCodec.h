@@ -18,10 +18,11 @@ struct QSFContext
 {
   int length = 0;
   int fade = 0;
-  int year;
+  std::string year;
   std::string title;
   std::string artist;
   std::string album;
+  std::string comment;
 };
 
 class ATTRIBUTE_HIDDEN CQSFCodec : public kodi::addon::CInstanceAudioDecoder
