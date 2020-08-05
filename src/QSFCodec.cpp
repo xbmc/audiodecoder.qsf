@@ -15,7 +15,7 @@ extern "C"
 #include "psflib.h"
 #include "qsound.h"
 
-  static void* psf_file_fopen(const char* uri)
+  static void* psf_file_fopen(void* context, const char* uri)
   {
     if (!uri)
       return nullptr;
@@ -64,8 +64,9 @@ extern "C"
     return file->GetPosition();
   }
 
-  const psf_file_callbacks psf_file_system = {"\\/",          psf_file_fopen,  psf_file_fread,
-                                              psf_file_fseek, psf_file_fclose, psf_file_ftell};
+  const psf_file_callbacks psf_file_system = {"\\/",          nullptr,        psf_file_fopen,
+                                              psf_file_fread, psf_file_fseek, psf_file_fclose,
+                                              psf_file_ftell};
 
   static void print_message(void* context, const char* message)
   {
