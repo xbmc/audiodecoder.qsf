@@ -18,11 +18,13 @@
     <assets>
       <icon>icon.png</icon>
     </assets>
+    <summary lang="da_DK">Capcom QSound QSF lydafkoder</summary>
     <summary lang="de_DE">Capcom QSound QSF Audio Decoder</summary>
     <summary lang="en_GB">Capcom QSound QSF Audio Decoder</summary>
     <summary lang="ko_KR">Capcom QSound QSF 오디오 디코더</summary>
     <summary lang="ru_RU">Аудиодекодер Capcom QSound QSF</summary>
     <summary lang="zh_CN">Capcom QSound QSF 音频解码器</summary>
+    <description lang="da_DK">Tilføjer afkodningsunderstøttelse til Capcom QSound Sound Format-filer (.QSF/.MINIQSF).[CR][CR]QSound er det originale navn på en positionel tredimensionel (3D) lydbehandlingsalgoritme fra QSound Labs, der skaber 3D-lydeffekter fra flere monofoniske kilder og summerer udgangene til to kanaler til præsentation over almindelige stereohøjttalere.</description>
     <description lang="de_DE">Fügt Dekodierungsunterstützung für Capcom QSound Sound Format-Dateien (.QSF / .MINIQSF) hinzu.[CR][CR]QSound ist der ursprüngliche Name für einen dreidimensionalen (3D) Tonverarbeitungsalgorithmus von QSound Labs, der 3D-Audioeffekte aus mehreren monophonen Quellen erstellt und die Ausgänge für die Präsentation über normale Stereolautsprecher auf zwei Kanäle summiert.</description>
     <description lang="en_GB">Adds decoding support for Capcom QSound Sound Format files (.QSF/.MINIQSF).[CR][CR]QSound is the original name for a positional three-dimensional (3D) sound processing algorithm from QSound Labs that creates 3D audio effects from multiple monophonic sources and sums the outputs to two channels for presentation over regular stereo speakers.</description>
     <description lang="ko_KR">Capcom QSound 사운드 형식 파일(.QSF/.MINIQSF)에 대한 디코딩 지원을 추가합니다.[CR][CR]QSound는 여러 위치에서 3D 오디오 효과를 생성하는 QSound Labs의 위치 3차원(3D) 사운드 처리 알고리즘의 원래 이름입니다. 모노포닉 소스를 출력하고 일반 스테레오 스피커를 통한 프레젠테이션을 위해 두 개의 채널로 출력을 합산합니다.</description>
