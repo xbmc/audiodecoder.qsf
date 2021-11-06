@@ -25,7 +25,7 @@ struct QSFContext
   std::string comment;
 };
 
-class ATTRIBUTE_HIDDEN CQSFCodec : public kodi::addon::CInstanceAudioDecoder
+class ATTR_DLL_LOCAL CQSFCodec : public kodi::addon::CInstanceAudioDecoder
 {
 public:
   CQSFCodec(KODI_HANDLE instance, const std::string& version)
@@ -44,7 +44,7 @@ public:
             int& bitrate,
             AudioEngineDataFormat& format,
             std::vector<AudioEngineChannel>& channellist) override;
-  int ReadPCM(uint8_t* buffer, int size, int& actualsize) override;
+  int ReadPCM(uint8_t* buffer, size_t size, size_t& actualsize) override;
   int64_t Seek(int64_t time) override;
   bool ReadTag(const std::string& filename, kodi::addon::AudioDecoderInfoTag& tag) override;
 

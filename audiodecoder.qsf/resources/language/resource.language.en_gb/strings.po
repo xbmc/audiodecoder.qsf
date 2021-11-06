@@ -23,3 +23,15 @@ msgstr ""
 msgctxt "Addon Description"
 msgid "Adds decoding support for Capcom QSound Sound Format files (.QSF/.MINIQSF).[CR][CR]QSound is the original name for a positional three-dimensional (3D) sound processing algorithm from QSound Labs that creates 3D audio effects from multiple monophonic sources and sums the outputs to two channels for presentation over regular stereo speakers."
 msgstr ""
+
+#. Supported file extension description about ".qsf"
+#: audiodecoder.qsf/addon.xml.in
+msgctxt "#30100"
+msgid "The qsf file extension is associated with the QSound, a sound processing algorithm used to create 3D audio."
+msgstr ""
+
+#. Supported file extension description about ".minissf"
+#: audiodecoder.qsf/addon.xml.in
+msgctxt "#30101"
+msgid "Similar to a .QSF file; contains imported sequence data for songs from .QSFLIB files located in the same directory."
+msgstr ""

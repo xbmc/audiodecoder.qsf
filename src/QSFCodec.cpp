@@ -235,15 +235,15 @@ bool CQSFCodec::Init(const std::string& filename,
   return true;
 }
 
-int CQSFCodec::ReadPCM(uint8_t* buffer, int size, int& actualsize)
+int CQSFCodec::ReadPCM(uint8_t* buffer, size_t size, size_t& actualsize)
 {
   if (m_err < 0)
-    return 1;
+    return AUDIODECODER_READ_ERROR;
   if (m_eof && !m_silenceTestBuffer.data_available())
-    return -1;
+    return AUDIODECODER_READ_EOF;
   if (m_noLoop && m_tagSong_ms &&
       (m_posDelta + mul_div(m_dataWritten, 1000, 24038)) >= m_tagSong_ms + m_tagFade_ms)
-    return 1;
+    return AUDIODECODER_READ_ERROR;
 
   unsigned int written = 0;
 
@@ -287,12 +287,12 @@ int CQSFCodec::ReadPCM(uint8_t* buffer, int size, int& actualsize)
           if (m_err < 0)
           {
             kodi::Log(ADDON_LOG_ERROR, "Execution halted with an error: '%i'", m_err);
-            return 1;
+            return AUDIODECODER_READ_ERROR;
           }
           if (!samples_to_render)
           {
             kodi::Log(ADDON_LOG_ERROR, "Execution no samples to render");
-            return 1;
+            return AUDIODECODER_READ_ERROR;
           }
         }
         m_silenceTestBuffer.write(m_sampleBuffer.data(), samples_to_render * 2);
@@ -303,7 +303,7 @@ int CQSFCodec::ReadPCM(uint8_t* buffer, int size, int& actualsize)
     if (m_silenceTestBuffer.test_silence())
     {
       m_eof = true;
-      return -1;
+      return AUDIODECODER_READ_EOF;
     }
 
     written = m_silenceTestBuffer.data_available() / 2;
@@ -328,12 +328,12 @@ int CQSFCodec::ReadPCM(uint8_t* buffer, int size, int& actualsize)
       if (m_err < 0)
       {
         kodi::Log(ADDON_LOG_ERROR, "Execution halted with an error: '%i'", m_err);
-        return 1;
+        return AUDIODECODER_READ_ERROR;
       }
       if (!written)
       {
         kodi::Log(ADDON_LOG_ERROR, "Execution no written data");
-        return 1;
+        return AUDIODECODER_READ_ERROR;
       }
     }
   }
@@ -370,7 +370,7 @@ int CQSFCodec::ReadPCM(uint8_t* buffer, int size, int& actualsize)
   memcpy(buffer, m_sampleBuffer.data(), written * 2 * sizeof(int16_t));
   actualsize = written * 2 * sizeof(int16_t);
 
-  return 0;
+  return AUDIODECODER_READ_SUCCESS;
 }
 
 int64_t CQSFCodec::Seek(int64_t time)
@@ -544,7 +544,7 @@ bool CQSFCodec::ReadTag(const std::string& filename, kodi::addon::AudioDecoderIn
 
 //------------------------------------------------------------------------------
 
-class ATTRIBUTE_HIDDEN CMyAddon : public kodi::addon::CAddonBase
+class ATTR_DLL_LOCAL CMyAddon : public kodi::addon::CAddonBase
 {
 public:
   CMyAddon() = default;
