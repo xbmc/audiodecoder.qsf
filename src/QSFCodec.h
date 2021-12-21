@@ -28,10 +28,7 @@ struct QSFContext
 class ATTR_DLL_LOCAL CQSFCodec : public kodi::addon::CInstanceAudioDecoder
 {
 public:
-  CQSFCodec(KODI_HANDLE instance, const std::string& version)
-    : CInstanceAudioDecoder(instance, version)
-  {
-  }
+  CQSFCodec(const kodi::addon::IInstanceInfo& instance) : CInstanceAudioDecoder(instance) {}
 
   virtual ~CQSFCodec() = default;
 
