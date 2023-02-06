@@ -18,8 +18,8 @@ msgstr ""
 
 msgctxt "Addon Summary"
 msgid "Capcom QSound QSF Audio Decoder"
-msgstr ""
+msgstr "Capcom QSound QSF Audio deskodetzailea"
 
 msgctxt "Addon Description"
 msgid "Adds decoding support for Capcom QSound Sound Format files (.QSF/.MINIQSF).[CR][CR]QSound is the original name for a positional three-dimensional (3D) sound processing algorithm from QSound Labs that creates 3D audio effects from multiple monophonic sources and sums the outputs to two channels for presentation over regular stereo speakers."
-msgstr ""
+msgstr "Capcom QSound Sound Format fitxategiak (.QSF/.MINIQSF) deskodetzeko bateragarritasuna dakar.[CR][CR]QSound soinua hiru dimentsiotan (3D) prozesatzeko algoritmo baten jatorrizko izena da, QSound Labs-en eskutik. Honek, hiru dimentsiotako audio-efektuak sortzen ditu hainbat iturri monofonikotatik, eta irteerak batzen ditu bi kanaletara eramanaz, ohiko bozgorailu estereotan erreproduzituko delarik."
