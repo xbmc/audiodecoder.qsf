@@ -29,6 +29,7 @@
     <assets>
       <icon>icon.png</icon>
     </assets>
+    <summary lang="af_ZA">Capcom QSound QSF Oudio Dekodeerder</summary>
     <summary lang="ca_ES">Descodificador d&apos;àudio Capcom QSound QSF</summary>
     <summary lang="da_DK">Capcom QSound QSF lydafkoder</summary>
     <summary lang="de_DE">Capcom QSound QSF Audio Decoder</summary>
@@ -38,14 +39,14 @@
     <summary lang="eu_ES">Capcom QSound QSF Audio deskodetzailea</summary>
     <summary lang="fr_FR">Décodeur audio Capcom QSound QSF</summary>
     <summary lang="hr_HR">Capcom QSound QSF zvučni dekôder</summary>
-    <summary lang="it_IT">Capcom QSound QSF Audio Decoder</summary>
+    <summary lang="it_IT">Decodificatore audio Capcom QSound QSF</summary>
     <summary lang="ko_KR">Capcom QSound QSF 오디오 디코더</summary>
     <summary lang="ru_RU">Аудиодекодер Capcom QSound QSF</summary>
     <summary lang="zh_CN">Capcom QSound QSF 音频解码器</summary>
     <description lang="da_DK">Tilføjer afkodningsunderstøttelse til Capcom QSound Sound Format-filer (.QSF/.MINIQSF).[CR][CR]QSound er det originale navn på en positionel tredimensionel (3D) lydbehandlingsalgoritme fra QSound Labs, der skaber 3D-lydeffekter fra flere monofoniske kilder og summerer udgangene til to kanaler til præsentation over almindelige stereohøjttalere.</description>
     <description lang="de_DE">Fügt Dekodierungsunterstützung für Capcom QSound Sound Format-Dateien (.QSF / .MINIQSF) hinzu.[CR][CR]QSound ist der ursprüngliche Name für einen dreidimensionalen (3D) Tonverarbeitungsalgorithmus von QSound Labs, der 3D-Audioeffekte aus mehreren monophonen Quellen erstellt und die Ausgänge für die Präsentation über normale Stereolautsprecher auf zwei Kanäle summiert.</description>
     <description lang="en_GB">Adds decoding support for Capcom QSound Sound Format files (.QSF/.MINIQSF).[CR][CR]QSound is the original name for a positional three-dimensional (3D) sound processing algorithm from QSound Labs that creates 3D audio effects from multiple monophonic sources and sums the outputs to two channels for presentation over regular stereo speakers.</description>
-    <description lang="es_ES">Añade soporte a la decodificacion de los archivos Capcom QSound Sound Format (.QSF/.MINIQSF).[CR][CR]QSound es el nombre original del algoritmo de procesamiento de audio posicional en tres dimensiones (3D) de QSound Labs, que crea efectos de audio 3D desde múltiples fuentes monofónicas y suma la salida a 2 canales para presentarlo sobre altavoces normales estéreo.</description>
+    <description lang="es_ES">Añade soporte a la decodificación de los archivos Capcom QSound Sound Format (.QSF/.MINIQSF).[CR][CR]QSound es el nombre original del algoritmo de procesamiento de audio posicional en tres dimensiones (3D) de QSound Labs, que crea efectos de audio 3D desde múltiples fuentes monofónicas y suma la salida a 2 canales para presentarlo sobre altavoces normales estéreo.</description>
     <description lang="es_MX">Agrega soporte de decodificación de archivos Capcom QSound Format (.QSF/.MINIQSD).[CR][CR]QSound es el nombre original para un algoritmo de procesamiento de audio posicional en tres dimensiones (3D) de QSound Labs que crea efectos de audio 3D desde múltiples fuentes monofónicas y suma las salidas a 2 canales para presentarse en altavoces estéreo comunes.</description>
     <description lang="eu_ES">Capcom QSound Sound Format fitxategiak (.QSF/.MINIQSF) deskodetzeko bateragarritasuna dakar.[CR][CR]QSound soinua hiru dimentsiotan (3D) prozesatzeko algoritmo baten jatorrizko izena da, QSound Labs-en eskutik. Honek, hiru dimentsiotako audio-efektuak sortzen ditu hainbat iturri monofonikotatik, eta irteerak batzen ditu bi kanaletara eramanaz, ohiko bozgorailu estereotan erreproduzituko delarik.</description>
     <description lang="fr_FR">Ajoute la prise en charge du décodage des fichiers Capcom QSound Sound Format (.QSF/.MINIQSF).[CR][CR]QSound est le nom original d&apos;un algorithme de traitement du son tridimensionnel (3D) positionnel de QSound Labs qui crée des effets audio 3D à partir de plusieurs sources monophoniques et additionne les sorties sur deux canaux pour une présentation sur des haut-parleurs stéréo ordinaires.</description>
